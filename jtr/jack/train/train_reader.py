@@ -70,6 +70,7 @@ def main():
     parser.add_argument('--train', default=train_default, type=str, help="jtr training file")
     parser.add_argument('--dev', default=dev_default, type=str, help="jtr dev file")
     parser.add_argument('--test', default=test_default, type=str, help="jtr test file")
+    parser.add_argument('--num', default=0, type=int, help="number of test files")
     parser.add_argument('--supports', default='single', choices=sorted(support_alts),
                         help="None, single (default) or multiple supporting statements per instance; multiple_flat reads multiple instances creates a separate instance for every support")
     parser.add_argument('--questions', default='single', choices=sorted(question_alts),
@@ -129,7 +130,7 @@ def main():
     parser.add_argument('--prune', default='False',
                         help='If the vocabulary should be pruned to the most frequent words.')
     parser.add_argument('--model_dir', default='/tmp/jtreader', type=str, help="Directory to write reader to.")
-    parser.add_argument('--out_pred', default='out_pred.txt', type=str, help="File to write predictions to.")
+    parser.add_argument('--out_pred', default='out_pred', type=str, help="File to write predictions to.")
     parser.add_argument('--log_interval', default=100, type=int, help="interval for logging eta, training loss, etc.")
     parser.add_argument('--device', default='/cpu:0', type=str, help='device setting for tensorflow')
     parser.add_argument('--lowercase', action='store_true', help='lowercase texts.')
@@ -177,7 +178,7 @@ def main():
             embeddings = Embeddings(None, None)
     else:
         train_data, dev_data = [load_labelled_data(name, **vars(args)) for name in [args.train, args.dev]]
-        test_data = load_labelled_data(args.test, **vars(args)) if args.test else None
+        #test_data = load_labelled_data(args.test, **vars(args)) if args.test else None
         logger.info('loaded train/dev/test data')
         if args.pretrain:
             embeddings = load_embeddings(args.embedding_file, args.embedding_format)
@@ -246,13 +247,15 @@ def main():
                      device=args.device)
 
         # Test final model
-        if test_data is not None:
-            test_eval_hook = readers.eval_hooks[args.model](reader, test_data,
-                                                            summary_writer=sw, epoch_interval=1,
-                                                            write_metrics_to=args.write_metrics_to)
+        if True: #test_data is not None:
+            for summa_part in range(args.num):
+                test_data = load_labelled_data(args.test+"_"+str(summa_part), **vars(args)) if args.test else None
+                test_eval_hook = readers.eval_hooks[args.model](reader, test_data,
+                                                                summary_writer=sw, epoch_interval=1,
+                                                                write_metrics_to=args.write_metrics_to)
 
-            reader.load(args.model_dir)
-            test_eval_hook.at_test_time(1)
+                reader.load(args.model_dir)
+                test_eval_hook.at_test_time(1,suffix=summa_part)
 
 
 if __name__ == "__main__":

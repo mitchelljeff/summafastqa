@@ -331,7 +331,7 @@ class XQAEvalHook(EvalHook):
                  write_metrics_to=None, info="", side_effect=None, **kwargs):
         ports = [FlatPorts.Prediction.answer_span, FlatPorts.Target.answer_span, FlatPorts.Input.answer2question, Ports.Input.question, Ports.Input.sample_id]
         self.test_time=False
-        self.out_pred=open(reader.shared_resources.config["out_pred"],"w")
+        self.op_prefix=reader.shared_resources.config["out_pred"]
         super().__init__(reader, dataset, ports, iter_interval, epoch_interval, metrics, summary_writer,
                          write_metrics_to, info, side_effect)
 
@@ -391,9 +391,11 @@ class XQAEvalHook(EvalHook):
 
         return {"f1": acc_f1, "exact": acc_exact}
     
-    def at_test_time(self,epoch):
+    def at_test_time(self,epoch,suffix=0):
         self.test_time=True
+        self.out_pred=open(self.op_prefix+str(suffix),"w")
         self.__call__(epoch)
+        self.out_pred.close()
 
 class ClassificationEvalHook(EvalHook):
     def __init__(self, reader: JTReader, dataset: List[Tuple[QASetting, List[Answer]]],
